@@ -36,4 +36,17 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export const supabase = _supabase;
+// Export a safe client: if not configured, throw helpful error on first use instead of crashing with "cannot read property of null"
+export const supabase: SupabaseClientType = (_supabase ||
+  (new Proxy({} as SupabaseClientType, {
+    get(_target, prop) {
+      const hint =
+        'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) in your hosting dashboard and redeploy.';
+      // Keep console error for visibility in production logs
+      if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.error(hint);
+      }
+      throw new Error(hint + ` Attempted to access client property "${String(prop)}".`);
+    },
+  })) as SupabaseClientType);

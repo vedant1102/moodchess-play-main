@@ -198,14 +198,6 @@ const Game = () => {
       
       setWhiteCaptured(whiteCapturedPieces);
       setBlackCaptured(blackCapturedPieces);
-      
-      // Evaluate position with Stockfish
-      if (stockfishReady) {
-        evaluatePosition(chess.fen(), (evalData) => {
-          setEvaluation(evalData.score);
-          setMateIn(evalData.mate);
-        });
-      }
     }
   };
 
@@ -585,9 +577,34 @@ const Game = () => {
               <div className="relative" style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <Chessboard
                   position={position}
+                  draggable={true}
                   onDrop={({ sourceSquare, targetSquare }) => {
+                    // Prevent flicker (snap back then forward) and disappearing on illegal drops
+                    // 1) Only allow moves on player's turn
+                    const isPlayersTurn = chess.turn() === playerColor;
+                    if (!isPlayersTurn) {
+                      playSound('illegal');
+                      return 'snapback';
+                    }
+
+                    // 2) Check move legality without mutating the live game first
+                    const tentative = new Chess(chess.fen());
+                    const tentativeMove = tentative.move({
+                      from: sourceSquare as Square,
+                      to: targetSquare as Square,
+                      promotion: 'q',
+                    });
+
+                    if (!tentativeMove) {
+                      // Illegal: tell board to snap back; do NOT change position state
+                      playSound('illegal');
+                      return 'snapback';
+                    }
+
+                    // Legal: perform the real move which updates state and DB
                     attemptMove(sourceSquare as Square, targetSquare as Square);
-                    return false;
+                    // Return undefined to let chessboard keep the piece where dropped without extra snap animation
+                    return undefined;
                   }}
                   onSquareClick={handleSquareClick}
                   orientation={playerColor === 'b' ? 'black' : 'white'}
@@ -613,7 +630,7 @@ const Game = () => {
                       return acc;
                     }, {} as Record<string, any>)
                   }}
-                  transitionDuration={200}
+                  transitionDuration={120}
                 />
               </div>
             </div>
