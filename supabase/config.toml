@@ -1,0 +1,7 @@
+project_id = "iyqrbquqvkomyqpzmoxa"
+
+[functions.explain-move]
+verify_jwt = false
+
+[functions.analyze-game]
+verify_jwt = false
